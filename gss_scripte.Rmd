@@ -1,0 +1,224 @@
+---
+title: "Analysis of General Social Survey Data"
+author: "parfait AKOUNDA"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Introduction
+
+This document analyzes the relationship between education level and income using the General Social Survey (GSS) dataset.
+
+## 1. Loading the Required Libraries
+
+```{r}
+library(haven)    # For importing SAS files
+library(tidyverse) # For data manipulation & visualization
+library(corrplot)  # For correlation plots
+```
+# 2. Importing the GSS Datase
+```{r}
+# Replace "path/to/your/file.sas7bdat" with the actual file path
+gss_data <- read_sas("C:/Users/HP/Downloads/2021/2021/gss2021.sas7bdat")
+glimpse(gss_data)  # Overview of the dataset
+```
+# 3. Data Cleaning & Selection
+```{r}
+gss_subset <- gss_data %>%
+  select(EDUC, REALINC) %>%  # Selecting education and income variables
+  drop_na()  # Removing missing values
+  summary(gss_subset)
+```
+# 4. Statistical Analysis
+## 4.1 Correlation between Education and Income
+```{r}
+correlation <- cor(gss_subset$EDUC, gss_subset$REALINC, use = "complete.obs")
+correlation
+```
+### Interprétation du coefficient de corrélation
+Le coefficient de corrélation entre l'éducation (EDUC) et le revenu réel (REALINC) est 0.378.
+
+Que signifie cette valeur ?
+0.3778 indique une corrélation positive faible à modérée entre le niveau d'éducation et le revenu.
+
+Cela signifie que plus une personne a d'années d'éducation, plus elle a tendance à gagner un revenu élevé, mais cette relation n'est pas très forte.
+
+Une corrélation de 1 signifierait une relation parfaite, tandis que 0 indiquerait aucune relation.
+
+Que peut-on en conclure ?
+L’éducation joue un rôle dans l’augmentation du revenu, mais d’autres facteurs influencent aussi fortement les revenus (expérience, secteur d’activité, situation économique, etc.).
+
+Une corrélation modérée signifie que certaines personnes avec peu d’éducation peuvent tout de même bien gagner leur vie, tandis que d'autres ayant un haut niveau d’éducation peuvent avoir un revenu faible.
+
+## 4.2 Linear Regression
+```{r}
+model <- lm(REALINC ~ EDUC, data = gss_subset)
+summary(model)
+```
+### Interprétation des résultats de la régression linéaire
+Le modèle de régression estime la relation entre le niveau d’éducation (EDUC) et le revenu réel (REALINC).
+
+####1. Interprétation des coefficients
+𝑅𝐸𝐴𝐿I𝑁𝐶=−31162+4616.7×𝐸𝐷𝑈𝐶
+REALINC=−31162+4616.7×EDUC
+.Intercept (-31 162) : Si une personne n’a aucune année d’éducation (EDUC = 0), le modèle prédit un revenu de -31 162. Ce n’est pas réaliste, mais c’est simplement l’extrapolation mathématique du modèle.
+
+.Coefficient de EDUC (4 616.7) : Chaque année supplémentaire d’éducation est associée à une augmentation moyenne du revenu réel de 4 616,7 unités monétaires (probablement en dollars).
+
+#### 2. Signification statistique
+.p-value < 2e-16 pour EDUC : La relation entre l’éducation et le revenu est hautement significative.
+
+Les trois étoiles ('*'**) confirment une très forte signification statistique (p < 0.001).
+
+#### 3. Qualité du modèle
+Multiple R-squared = 0.1427 → Seulement 14.27% de la variation du revenu est expliquée par l’éducation.
+
+Cela signifie qu’il y a d’autres facteurs importants (âge, sexe, expérience professionnelle, secteur d’activité, etc.).
+
+Residual standard error = 31 030 → L’écart-type des résidus est élevé, indiquant une forte variabilité des revenus à éducation égale.
+
+#### 4. Conclusion
+Il existe une relation positive significative entre éducation et revenu, mais elle ne suffit pas à expliquer l’ensemble des variations de salaire.
+
+Pour améliorer le modèle, il faudrait inclure plus de variables (âge, secteur d’activité, genre, expérience).
+# 5. Data Visualization
+## 5.1 Scatter Plot with Regression Line
+```{r}
+ggplot(gss_subset, aes(x = EDUC, y = REALINC)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", col = "blue") +
+  labs(title = "Relation between Education Level and Income",
+       x = "Years of Education",
+       y = "Real Income")
+```
+## Multiple linear regression
+```{r}
+model_multi <- lm(REALINC ~ EDUC + AGE + HRS1, data = gss_data)
+summary(model_multi)
+```
+## 6. Interprétation des Résultats
+
+### 6.1 Analyse des Coefficients
+
+```{r}
+# Affichage des résultats de la régression multiple
+summary(model_multi)
+```
+
+| Variable   | Estimate (Effet sur REALINC) | p-value | Signification |
+|------------|------------------------------|---------|---------------|
+| **(Intercept)** | -64,136 | < 2e-16 | Revenu prédit si EDUC, AGE et HRS1 sont à 0 (hors contexte réel). |
+| **EDUC**   | 4,547 | < 2e-16 | Une année supplémentaire d'éducation augmente le revenu annuel de 4,547 unités. |
+| **AGE**    | 408 | 6.16e-14 | Chaque année supplémentaire d'âge augmente le revenu de 408 unités. |
+| **HRS1**   | 485 | < 2e-16 | Chaque heure travaillée en plus par semaine augmente le revenu de 485 unités. |
+
+**Interprétation :**
+- L’éducation a un impact positif et significatif sur le revenu.
+- L’âge a un effet positif mais plus faible.
+- Les heures travaillées augmentent le revenu, mais l'effet reste modéré.
+
+---
+
+### 6.2 Qualité du Modèle
+
+```{r}
+# Affichage du R² et de la p-value globale
+summary(model_multi)$r.squared
+summary(model_multi)$adj.r.squared
+```
+
+- **R² = 0.1879** → 18.79% de la variance du revenu est expliquée par EDUC, AGE et HRS1.
+- **p-value globale < 2.2e-16** → Le modèle est statistiquement significatif.
+
+---
+
+### 6.3 Comparaison avec la Régression Simple
+
+```{r}
+# Comparaison des modèles
+```
+
+
+```{r}
+summary(model)$r.squared
+summary(model_multi)$r.squared
+```
+
+| Modèle | EDUC (Effet sur REALINC) | R² | Interprétation |
+|--------|---------------------------|----|---------------|
+| **Régression simple** (REALINC ~ EDUC) | 4,617 | 14.27% | L’éducation seule explique 14% de la variabilité du revenu. |
+| **Régression multiple** (REALINC ~ EDUC + AGE + HRS1) | 4,547 | 18.79% | L’éducation reste le facteur principal, mais AGE et HRS1 ajoutent un pouvoir explicatif. |
+
+**Conclusion :**
+L'ajout de l'âge et des heures travaillées améliore légèrement le modèle, mais l’éducation reste le facteur le plus déterminant.
+
+---
+
+### 6.4 Prochaines Étapes
+
+```{r}
+# Ajout possible d'autres variables
+# Exemple : régression incluant le genre
+model_gender <- lm(REALINC ~ EDUC + AGE + HRS1 + SEX, data = gss_data)
+summary(model_gender)
+```
+
+Pour améliorer le modèle, il serait intéressant d'ajouter d'autres variables comme :
+- **Le genre (GENDER)**
+- **Le type d'emploi (OCCUPATION)**
+- **Le prestige du métier (PRESTIGE)**
+- **L'expérience professionnelle (WORKEXP)**
+- **Le lieu de résidence (URBAN/RURAL)**
+
+
+# 5.2 Correlation Matrix
+
+# Selecting relevant variables
+```{r}
+gss_corr <- gss_data %>%
+  select(EDUC, REALINC, AGE, HRS1) %>% 
+  drop_na()
+```
+# Computing correlation matrix
+```{r}
+corr_matrix <- cor(gss_corr)
+```
+
+# Plotting correlation matrix
+```{r}
+corrplot(corr_matrix, method = "color", tl.col = "black", tl.srt = 45)
+```
+### Interprétation de la matrice de corrélation
+Le corrélogramme représente les corrélations entre les variables suivantes :
+
+EDUC (niveau d’éducation)
+
+REALINC (revenu réel)
+
+AGE (âge)
+
+HRS1 (heures travaillées par semaine)
+
+1. Lecture des couleurs et intensités
+Couleurs bleues → Corrélation positive (plus c'est foncé, plus la corrélation est forte).
+
+Couleurs rouges → Corrélation négative (plus c'est foncé, plus la relation inverse est forte).
+
+Couleurs blanches → Pas de corrélation significative (~0).
+
+2. Analyse des corrélations clés
+EDUC & REALINC (~0.38, bleu clair)
+→ Une corrélation positive modérée : plus une personne a d’éducation, plus son revenu tend à être élevé.
+
+AGE & REALINC (~faible positif, bleu très clair)
+→ Une corrélation faible positive : l’âge influence légèrement le revenu, mais pas fortement.
+→ Peut-être que l’expérience professionnelle est plus déterminante que l’âge seul.
+
+HRS1 & REALINC (~faible positif, bleu très clair)
+→ Une faible corrélation positive : plus une personne travaille d’heures, plus son revenu est légèrement élevé.
+
+AGE & HRS1 (~négatif, rouge clair)
+→ Une corrélation négative : plus l’âge augmente, moins les gens travaillent d’heures (probablement dû à la retraite, aux réductions d’heures en fin de carrière, etc.).
+
+## 6.Conclusion
+The analysis shows a positive correlation between education level and income. Further analysis could include more variables such as age, gender, and job prestige.
